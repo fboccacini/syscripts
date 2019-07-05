@@ -31,7 +31,8 @@ usage() {
   echo "  --system-update <y|n>: choose whether or not to perform system update" 1>&2;
   echo "  -d: remove installation folder at the end" 1>&2;
   echo "  --delete-install-folder <y|n>: choose whether or not to remove installation folder at the end" 1>&2;
-  echo "  -db <mariadb|postgresql>: choose db type" 1>&2;
+  echo "  -b: install db (default)" 1>&2;
+  echo "  --db-type <mariadb|postgresql>: choose db type, assumes -b" 1>&2;
   echo "  -g: install git (default)" 1>&2;
   echo "  --install-git <y|n>: choose whether or not to install git" 1>&2;
 
@@ -42,17 +43,11 @@ get_info() {
   echo "Project name:"
   read PROJECT_NAME
 
-  echo "User that will execute the server:"
-  read NEW_USER
-  echo "Password:"
-  read NEW_PASSWD
-  echo
-
   echo "DB production url:"
   read DB_PRO_URL
   echo
 
-  echo "DB developemnt url:"
+  echo "DB development url:"
   read DB_DEV_URL
   echo
 
@@ -82,7 +77,7 @@ get_info() {
 rails_configuration() {
 
   # Get informations
-  get_info()
+  get_info
 
   while [ $CONFIRM != 'y' ]
   do
@@ -108,7 +103,10 @@ rails_configuration() {
     then
       exit 0
     elif [ $CONFIRM = 'n']
-      get_info()
+    then
+      get_info
+    else
+      echo "Confirm with 'y' or 'n'. 'quit' to exit."
     fi
 
   done
@@ -139,13 +137,19 @@ while getopts ":y:assume-yes:db:git" o; do
             UPDATE='y'
             DELETE='y'
             GIT='y'
+            DB='y'
+            DB_TYPE='1'
             ;;
         assume-yes)
             UPDATE='y'
             DELETE='y'
             GIT='y'
             ;;
-        db)
+        b)
+            DB='y'
+            ;;
+        db-type)
+            DB='y'
             CHOICE=${OPTARG}
             case $CHOICE in
                 mariadb)
@@ -187,18 +191,54 @@ while getopts ":y:assume-yes:db:git" o; do
 done
 shift $((OPTIND-1))
 
-if [ -z "${s}" ] || [ -z "${p}" ]; then
-    usage
+# Set user (get to sudo already so it won't ask later)
+sudo echo "What user should execute the webserver? We'll create one if it doesn't exist."
+read NEW_USER
+
+# Disable stop on error in case the id command fails
+set +e
+id -u $NEW_USER > /dev/null 2>&1
+
+if [ $? -eq 0 ]
+then
+  # Re-enable stop on error
+  set -e
+  echo
+  echo "Ok, we'll use $NEW_USER."
+  echo
+else
+  # Re-enable stop on error
+  set -e
+  echo
+  echo "Adding user: $NEW_USER.."
+
+  NEW_PASSWD_RETYPED='ssdasd'
+
+  while [[ "$NEW_PASSWD" != "$NEW_PASSWD_RETYPED" ]]
+  do
+    echo "Password:"
+    read NEW_PASSWD
+
+    echo "Retype it:"
+    read NEW_PASSWD_RETYPED
+
+  done
+
+  sudo useradd -m $NEW_USER
+  echo $NEW_PASSWD | sudo passwd $NEW_USER --stdin
+  echo "User $NEW_USER created."
+  echo
 fi
 
+
 # Perform system update
-while [$UPDATE != 'y' && $UPDATE != 'n' && $UPDATE != 'Y' && $UPDATE != 'N']
+while [[ $UPDATE != "y" ]] && [[ $UPDATE != "n" ]] && [[ $UPDATE != "Y" ]] && [[ $UPDATE != "N" ]]
 do
-  echo "First things first, proceed with system update? (y/n)"
+  echo "Proceed with system update? (y/n)"
   read UPDATE
 done
 
-if [ $UPDATE = 'y' || $UPDATE = 'Y']
+if [[ $UPDATE = "y" ]] || [[ $UPDATE = "Y" ]]
 then
 
   echo "Upgrading system.."
@@ -221,31 +261,18 @@ sudo yum -y install openssl openssl-devel subversion curl curl-devel gcc-c++ pat
 echo
 
 
-# Add user
-id -u NEW_USER > /dev/null 2>&1
-if [ $? -eq 0 ]
-then
-  echo
-  echo "User $NEW_USER exists already."
-  echo
-else
-  echo
-  echo "Adding user: $NEW_USER.."
-  sudo useradd -m -p $NEW_PASSWD $NEW_USER
-  echo "User $NEW_USER created."
-  echo
-fi
+
 
 # Get installer path for later use
 INSTALLER_PATH=$(pwd)
 
-while [$GIT != 'y' && $GIT != 'n' && $GIT != 'Y' && $GIT != 'N']
+while [ $GIT != 'y' ] && [ $GIT != 'n' ] && [ $GIT != 'Y' ] && [ $GIT != 'N' ]
 do
   echo "Would you like to install git? (y/n)"
   read GIT
 done
 
-if [ $GIT = 'y' || $GIT= 'Y']
+if [ $GIT = 'y' ] || [ $GIT = 'Y' ]
 then
   # Install git
   echo "Installing Git.."
@@ -257,54 +284,78 @@ else
   echo
 fi
 
+# Change user
+echo "Becoming $NEW_USER to install packages:"
+echo
 
-# DB choice
-while [ $DB_TYPE != '1' && $DB_TYPE != '2']
+# Create a folder to contain all needed packages
+mkdir -p installation
+sudo chmod 777 installation
+
+cd installation
+INST_DIR=$(pwd)
+
+su - $NEW_USER <<!
+$(echo $PASS)
+cd $INST_DIR
+
+while [$DB != 'y' && $DB != 'n' && $DB != 'Y' && $DB != 'N']
 do
-  echo "Which DB server would you like to install?"
-  echo "    1 - MariaDB"
-  echo "    2 - Postresql"
-  read DB_TYPE
+  echo "Would you like to install a local db server? (y/n)"
+  read DB
 done
 
-if [$DB_TYPE = '1']
+if [ $DB = 'y' || $DB = 'Y' ]
 then
-  # Install MariaDB server
-  echo "Installing DB server.."
-  curl -sS https://downloads.mariadb.com/MariaDB/mariadb_repo_setup | sudo bash
-  sudo rpm --import https://yum.mariadb.org/RPM-GPG-KEY-MariaDB
-  sudo yum -y remove MariaDB-Galera-server
-  sudo yum -y install MariaDB-server MariaDB-client MariaDB-devel MariaDB-shared
-  sudo systemctl enable mariadb
-  sudo systemctl start mariadb
-  sudo mysql_secure_installation
-
-  mysqladmin -u root -p version
-
-  echo "create database $(echo $PROJECT_NAME)_pro; create database $(echo $PROJECT_NAME)_dev; create database $(echo $PROJECT_NAME)_test; create user $(echo $DB_PRO_USER)@localhost identified by '$(echo $DB_PRO_PASS)'; create user $(echo $DB_DEV_USER)@localhost identified by '$(echo $DB_DEV_PASS)'; grant all privileges on $(echo $PROJECT_NAME)_pro.* to $(echo $DB_PRO_USER)@localhost; grant all privileges on $(echo $PROJECT_NAME)_dev.* to $(echo $DB_DEV_USER)@localhost;" | mysql -u root -p
-else
-
-  # Install Postgresql server
-  echo "Installing Postgresql server.."
-  sudo yum -y install postgresql postgresql-devel postgresql-server postgresql-libs postgresql-contrib
-
-  $POSTGRES_EXE=$( ls /etc/init.d/postgresql* )
-
-  sudo /etc/init.d/$POSTGRES_EXE initdb
-  sudo /etc/init.d/$POSTGRES_EXE start
-  sudo /etc/init.d/$POSTGRES_EXE chkconfig --levels 235 $POSTGRES_EXE on
-
-  POSTGRES_PASS_RETYPED='ssdasd'
-  while [ $POSTGRES_PASS != $POSTGRES_PASS_RETYPED ]
+  # DB choice
+  while [ $DB_TYPE != '1' && $DB_TYPE != '2']
   do
-    echo "Set postgres password:"
-    read POSTGRES_PASS
-    echo "Retype it:"
-    read POSTGRES_PASS_RETYPED
-    echo
+    echo "Which DB server would you like to install?"
+    echo "    1 - MariaDB"
+    echo "    2 - Postresql"
+    read DB_TYPE
   done
-  sudo -u postgres psql -U postgres -d postgres -c "alter user postgres with password '$POSTGRES_PASSWORD';"
 
+  if [$DB_TYPE = '1']
+  then
+    # Install MariaDB server
+    echo "Installing DB server.."
+    curl -sS https://downloads.mariadb.com/MariaDB/mariadb_repo_setup | sudo bash
+    sudo rpm --import https://yum.mariadb.org/RPM-GPG-KEY-MariaDB
+    sudo yum -y remove MariaDB-Galera-server
+    sudo yum -y install MariaDB-server MariaDB-client MariaDB-devel MariaDB-shared
+    sudo systemctl enable mariadb
+    sudo systemctl start mariadb
+    sudo mysql_secure_installation
+
+    mysqladmin -u root -p version
+
+    echo "create database $(echo $PROJECT_NAME)_pro; create database $(echo $PROJECT_NAME)_dev; create database $(echo $PROJECT_NAME)_test; create user $(echo $DB_PRO_USER)@localhost identified by '$(echo $DB_PRO_PASS)'; create user $(echo $DB_DEV_USER)@localhost identified by '$(echo $DB_DEV_PASS)'; grant all privileges on $(echo $PROJECT_NAME)_pro.* to $(echo $DB_PRO_USER)@localhost; grant all privileges on $(echo $PROJECT_NAME)_dev.* to $(echo $DB_DEV_USER)@localhost;" | mysql -u root -p
+  else
+
+    # Install Postgresql server
+    echo "Installing Postgresql server.."
+    sudo yum -y install postgresql postgresql-devel postgresql-server postgresql-libs postgresql-contrib
+
+    $POSTGRES_EXE=$( ls /etc/init.d/postgresql* )
+
+    sudo /etc/init.d/$POSTGRES_EXE initdb
+    sudo /etc/init.d/$POSTGRES_EXE start
+    sudo /etc/init.d/$POSTGRES_EXE chkconfig --levels 235 $POSTGRES_EXE on
+
+    POSTGRES_PASS_RETYPED='ssdasd'
+    while [ $POSTGRES_PASS != $POSTGRES_PASS_RETYPED ]
+    do
+      echo "Set postgres password:"
+      read POSTGRES_PASS
+      echo "Retype it:"
+      read POSTGRES_PASS_RETYPED
+      echo
+    done
+    sudo -u postgres psql -U postgres -d postgres -c "alter user postgres with password '$POSTGRES_PASSWORD';"
+
+
+  fi
 
 fi
 
@@ -320,20 +371,6 @@ if grep -q vboxsf /etc/group
 then
      sudo usermod -a -G vboxsf $NEW_USER
 fi
-
-# Change user
-echo "Becoming $NEW_USER to install gems:"
-echo
-
-# Create a folder to contain all needed packages
-mkdir -p installation
-sudo chmod 777 installation
-
-cd installation
-INST_DIR=$(pwd)
-
-su $NEW_USER
-cd $INST_DIR
 
 gpg2 --keyserver hkp://pool.sks-keyservers.net --recv-keys 409B6B1796C275462A1703113804BB82D39DC0E3 7D2BAF1CF37B13E2069D6956105BD0E739499BDB
 
@@ -386,8 +423,9 @@ done
 
 if [ $CONFIG = 'y' || $CONFIG = 'Y']
 then
-  rails_configuration()
+  rails_configuration
   echo "Ok, all done. Have a nice developing day!"
 else
   echo "Ok, don't forget to configure it manually then. Have a nice developing day!"
 fi
+!

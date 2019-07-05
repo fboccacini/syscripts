@@ -1,0 +1,340 @@
+USERADD(8)                                                                                System Management Commands                                                                               USERADD(8)
+
+[1mNAME[0m
+       useradd - create a new user or update default new user information
+
+[1mSYNOPSIS[0m
+       [1museradd [22m[[4moptions[24m] [4mLOGIN[0m
+
+       [1museradd [22m-D
+
+       [1museradd [22m-D [[4moptions[24m]
+
+[1mDESCRIPTION[0m
+       When invoked without the [1m-D [22moption, the [1museradd [22mcommand creates a new user account using the values specified on the command line plus the default values from the system. Depending on command line
+       options, the [1museradd [22mcommand will update system files and may also create the new user's home directory and copy initial files.
+
+       By default, a group will also be created for the new user (see [1m-g[22m, [1m-N[22m, [1m-U[22m, and [1mUSERGROUPS_ENAB[22m).
+
+[1mOPTIONS[0m
+       The options which apply to the [1museradd [22mcommand are:
+
+       [1m-b[22m, [1m--base-dir [4m[22mBASE_DIR[0m
+           The default base directory for the system if [1m-d [4m[22mHOME_DIR[24m is not specified.  [4mBASE_DIR[24m is concatenated with the account name to define the home directory. If the [1m-m [22moption is not used, [4mBASE_DIR[0m
+           must exist.
+
+           If this option is not specified, [1museradd [22mwill use the base directory specified by the [1mHOME [22mvariable in /etc/default/useradd, or /home by default.
+
+       [1m-c[22m, [1m--comment [4m[22mCOMMENT[0m
+           Any text string. It is generally a short description of the login, and is currently used as the field for the user's full name.
+
+       [1m-d[22m, [1m--home-dir [4m[22mHOME_DIR[0m
+           The new user will be created using [4mHOME_DIR[24m as the value for the user's login directory. The default is to append the [4mLOGIN[24m name to [4mBASE_DIR[24m and use that as the login directory name. The
+           directory [4mHOME_DIR[24m does not have to exist but will not be created if it is missing.
+
+       [1m-D[22m, [1m--defaults[0m
+           See below, the subsection "Changing the default values".
+
+       [1m-e[22m, [1m--expiredate [4m[22mEXPIRE_DATE[0m
+           The date on which the user account will be disabled. The date is specified in the format [4mYYYY-MM-DD[24m.
+
+           If not specified, [1museradd [22mwill use the default expiry date specified by the [1mEXPIRE [22mvariable in /etc/default/useradd, or an empty string (no expiry) by default.
+
+       [1m-f[22m, [1m--inactive [4m[22mINACTIVE[0m
+           The number of days after a password expires until the account is permanently disabled. A value of 0 disables the account as soon as the password has expired, and a value of -1 disables the
+           feature.
+
+           If not specified, [1museradd [22mwill use the default inactivity period specified by the [1mINACTIVE [22mvariable in /etc/default/useradd, or -1 by default.
+
+       [1m-g[22m, [1m--gid [4m[22mGROUP[0m
+           The group name or number of the user's initial login group. The group name must exist. A group number must refer to an already existing group.
+
+           If not specified, the behavior of [1museradd [22mwill depend on the [1mUSERGROUPS_ENAB [22mvariable in /etc/login.defs. If this variable is set to [4myes[24m (or [1m-U/--user-group [22mis specified on the command line), a
+           group will be created for the user, with the same name as her loginname. If the variable is set to [4mno[24m (or [1m-N/--no-user-group [22mis specified on the command line), useradd will set the primary group
+           of the new user to the value specified by the [1mGROUP [22mvariable in /etc/default/useradd, or 100 by default.
+
+       [1m-G[22m, [1m--groups [4m[22mGROUP1[24m[[4m,GROUP2,...[24m[[4m,GROUPN[24m]]]
+           A list of supplementary groups which the user is also a member of. Each group is separated from the next by a comma, with no intervening whitespace. The groups are subject to the same
+           restrictions as the group given with the [1m-g [22moption. The default is for the user to belong only to the initial group.
+
+       [1m-h[22m, [1m--help[0m
+           Display help message and exit.
+
+       [1m-k[22m, [1m--skel [4m[22mSKEL_DIR[0m
+           The skeleton directory, which contains files and directories to be copied in the user's home directory, when the home directory is created by [1museradd[22m.
+
+           This option is only valid if the [1m-m [22m(or [1m--create-home[22m) option is specified.
+
+           If this option is not set, the skeleton directory is defined by the [1mSKEL [22mvariable in /etc/default/useradd or, by default, /etc/skel.
+
+           If possible, the ACLs and extended attributes are copied.
+
+       [1m-K[22m, [1m--key [4m[22mKEY[24m=[4mVALUE[0m
+           Overrides /etc/login.defs defaults ([1mUID_MIN[22m, [1mUID_MAX[22m, [1mUMASK[22m, [1mPASS_MAX_DAYS [22mand others).
+
+           Example: [1m-K [4m[22mPASS_MAX_DAYS[24m=[4m-1[24m can be used when creating system account to turn off password aging, even though system account has no password at all. Multiple [1m-K [22moptions can be specified, e.g.:
+           [1m-K [4m[22mUID_MIN[24m=[4m100[24m  [1m-K [4m[22mUID_MAX[24m=[4m499[0m
+
+       [1m-l[22m, [1m--no-log-init[0m
+           Do not add the user to the lastlog and faillog databases.
+
+           By default, the user's entries in the lastlog and faillog databases are reset to avoid reusing the entry from a previously deleted user.
+
+       [1m-m[22m, [1m--create-home[0m
+           Create the user's home directory if it does not exist. The files and directories contained in the skeleton directory (which can be defined with the [1m-k [22moption) will be copied to the home
+           directory.
+
+           By default, if this option is not specified and [1mCREATE_HOME [22mis not enabled, no home directories are created.
+
+           The directory where the user's home directory is created must exist and have proper SELinux context and permissions. Otherwise the user's home directory cannot be created or accessed.
+
+       [1m-M[22m, [1m--no-create-home[0m
+           Do no create the user's home directory, even if the system wide setting from /etc/login.defs ([1mCREATE_HOME[22m) is set to [4myes[24m.
+
+       [1m-N[22m, [1m--no-user-group[0m
+           Do not create a group with the same name as the user, but add the user to the group specified by the [1m-g [22moption or by the [1mGROUP [22mvariable in /etc/default/useradd.
+
+           The default behavior (if the [1m-g[22m, [1m-N[22m, and [1m-U [22moptions are not specified) is defined by the [1mUSERGROUPS_ENAB [22mvariable in /etc/login.defs.
+
+       [1m-o[22m, [1m--non-unique[0m
+           Allow the creation of a user account with a duplicate (non-unique) UID.
+
+           This option is only valid in combination with the [1m-u [22moption.
+
+       [1m-p[22m, [1m--password [4m[22mPASSWORD[0m
+           The encrypted password, as returned by [1mcrypt[22m(3). The default is to disable the password.
+
+           [1mNote: [22mThis option is not recommended because the password (or encrypted password) will be visible by users listing the processes.
+
+           You should make sure the password respects the system's password policy.
+
+       [1m-r[22m, [1m--system[0m
+           Create a system account.
+
+           System users will be created with no aging information in /etc/shadow, and their numeric identifiers are chosen in the [1mSYS_UID_MIN[22m-[1mSYS_UID_MAX [22mrange, defined in /etc/login.defs, instead of
+           [1mUID_MIN[22m-[1mUID_MAX [22m(and their [1mGID [22mcounterparts for the creation of groups).
+
+           Note that [1museradd [22mwill not create a home directory for such a user, regardless of the default setting in /etc/login.defs ([1mCREATE_HOME[22m). You have to specify the [1m-m [22moptions if you want a home
+           directory for a system account to be created.
+
+       [1m-R[22m, [1m--root [4m[22mCHROOT_DIR[0m
+           Apply changes in the [4mCHROOT_DIR[24m directory and use the configuration files from the [4mCHROOT_DIR[24m directory.
+
+       [1m-P[22m, [1m--prefix [4m[22mPREFIX_DIR[0m
+           Apply changes in the [4mPREFIX_DIR[24m directory and use the configuration files from the [4mPREFIX_DIR[24m directory. This option does not chroot and is intended for preparing a cross-compilation target.
+           Some limitations: NIS and LDAP users/groups are not verified. PAM authentication is using the host files. No SELINUX support.
+
+       [1m-s[22m, [1m--shell [4m[22mSHELL[0m
+           The name of the user's login shell. The default is to leave this field blank, which causes the system to select the default login shell specified by the [1mSHELL [22mvariable in /etc/default/useradd,
+           or an empty string by default.
+
+       [1m-u[22m, [1m--uid [4m[22mUID[0m
+           The numerical value of the user's ID. This value must be unique, unless the [1m-o [22moption is used. The value must be non-negative. The default is to use the smallest ID value greater than or equal
+           to [1mUID_MIN [22mand greater than every other user.
+
+           See also the [1m-r [22moption and the [1mUID_MAX [22mdescription.
+
+       [1m-U[22m, [1m--user-group[0m
+           Create a group with the same name as the user, and add the user to this group.
+
+           The default behavior (if the [1m-g[22m, [1m-N[22m, and [1m-U [22moptions are not specified) is defined by the [1mUSERGROUPS_ENAB [22mvariable in /etc/login.defs.
+
+       [1m-Z[22m, [1m--selinux-user [4m[22mSEUSER[0m
+           The SELinux user for the user's login. The default is to leave this field blank, which causes the system to select the default SELinux user.
+
+   [1mChanging the default values[0m
+       When invoked with only the [1m-D [22moption, [1museradd [22mwill display the current default values. When invoked with [1m-D [22mplus other options, [1museradd [22mwill update the default values for the specified options.
+       Valid default-changing options are:
+
+       [1m-b[22m, [1m--base-dir [4m[22mBASE_DIR[0m
+           The path prefix for a new user's home directory. The user's name will be affixed to the end of [4mBASE_DIR[24m to form the new user's home directory name, if the [1m-d [22moption is not used when creating a
+           new account.
+
+           This option sets the [1mHOME [22mvariable in /etc/default/useradd.
+
+       [1m-e[22m, [1m--expiredate [4m[22mEXPIRE_DATE[0m
+           The date on which the user account is disabled.
+
+           This option sets the [1mEXPIRE [22mvariable in /etc/default/useradd.
+
+       [1m-f[22m, [1m--inactive [4m[22mINACTIVE[0m
+           The number of days after a password has expired before the account will be disabled.
+
+           This option sets the [1mINACTIVE [22mvariable in /etc/default/useradd.
+
+       [1m-g[22m, [1m--gid [4m[22mGROUP[0m
+           The group name or ID for a new user's initial group (when the [1m-N/--no-user-group [22mis used or when the [1mUSERGROUPS_ENAB [22mvariable is set to [4mno[24m in /etc/login.defs). The named group must exist, and a
+           numerical group ID must have an existing entry.
+
+           This option sets the [1mGROUP [22mvariable in /etc/default/useradd.
+
+       [1m-s[22m, [1m--shell [4m[22mSHELL[0m
+           The name of a new user's login shell.
+
+           This option sets the [1mSHELL [22mvariable in /etc/default/useradd.
+
+[1mNOTES[0m
+       The system administrator is responsible for placing the default user files in the /etc/skel/ directory (or any other skeleton directory specified in /etc/default/useradd or on the command line).
+
+[1mCAVEATS[0m
+       You may not add a user to a NIS or LDAP group. This must be performed on the corresponding server.
+
+       Similarly, if the username already exists in an external user database such as NIS or LDAP, [1museradd [22mwill deny the user account creation request.
+
+       Usernames may contain only lower and upper case letters, digits, underscores, or dashes. They can end with a dollar sign. Dashes are not allowed at the beginning of the username. Fully numeric
+       usernames and usernames . or .. are also disallowed. It is not recommended to use usernames beginning with . character as their home directories will be hidden in the [1mls [22moutput. In regular
+       expression terms: [a-zA-Z0-9_.][a-zA-Z0-9_.-]*[$]?
+
+       Usernames may only be up to 32 characters long.
+
+[1mCONFIGURATION[0m
+       The following configuration variables in /etc/login.defs change the behavior of this tool:
+
+       [1mCREATE_HOME [22m(boolean)
+           Indicate if a home directory should be created by default for new users.
+
+           This setting does not apply to system users, and can be overridden on the command line.
+
+       [1mGID_MAX [22m(number), [1mGID_MIN [22m(number)
+           Range of group IDs used for the creation of regular groups by [1museradd[22m, [1mgroupadd[22m, or [1mnewusers[22m.
+
+           The default value for [1mGID_MIN [22m(resp.  [1mGID_MAX[22m) is 1000 (resp. 60000).
+
+       [1mMAIL_DIR [22m(string)
+           The mail spool directory. This is needed to manipulate the mailbox when its corresponding user account is modified or deleted. If not specified, a compile-time default is used.
+
+       [1mMAIL_FILE [22m(string)
+           Defines the location of the users mail spool files relatively to their home directory.
+
+       The [1mMAIL_DIR [22mand [1mMAIL_FILE [22mvariables are used by [1museradd[22m, [1musermod[22m, and [1muserdel [22mto create, move, or delete the user's mail spool.
+
+       If [1mMAIL_CHECK_ENAB [22mis set to [4myes[24m, they are also used to define the [1mMAIL [22menvironment variable.
+
+       [1mMAX_MEMBERS_PER_GROUP [22m(number)
+           Maximum members per group entry. When the maximum is reached, a new group entry (line) is started in /etc/group (with the same name, same password, and same GID).
+
+           The default value is 0, meaning that there are no limits in the number of members in a group.
+
+           This feature (split group) permits to limit the length of lines in the group file. This is useful to make sure that lines for NIS groups are not larger than 1024 characters.
+
+           If you need to enforce such limit, you can use 25.
+
+           Note: split groups may not be supported by all tools (even in the Shadow toolsuite). You should not use this variable unless you really need it.
+
+       [1mPASS_MAX_DAYS [22m(number)
+           The maximum number of days a password may be used. If the password is older than this, a password change will be forced. If not specified, -1 will be assumed (which disables the restriction).
+
+       [1mPASS_MIN_DAYS [22m(number)
+           The minimum number of days allowed between password changes. Any password changes attempted sooner than this will be rejected. If not specified, -1 will be assumed (which disables the
+           restriction).
+
+       [1mPASS_WARN_AGE [22m(number)
+           The number of days warning given before a password expires. A zero means warning is given only upon the day of expiration, a negative value means no warning is given. If not specified, no
+           warning will be provided.
+
+       [1mSUB_GID_MIN [22m(number), [1mSUB_GID_MAX [22m(number), [1mSUB_GID_COUNT [22m(number)
+           If /etc/subuid exists, the commands [1museradd [22mand [1mnewusers [22m(unless the user already have subordinate group IDs) allocate [1mSUB_GID_COUNT [22munused group IDs from the range [1mSUB_GID_MIN [22mto [1mSUB_GID_MAX[0m
+           for each new user.
+
+           The default values for [1mSUB_GID_MIN[22m, [1mSUB_GID_MAX[22m, [1mSUB_GID_COUNT [22mare respectively 100000, 600100000 and 10000.
+
+       [1mSUB_UID_MIN [22m(number), [1mSUB_UID_MAX [22m(number), [1mSUB_UID_COUNT [22m(number)
+           If /etc/subuid exists, the commands [1museradd [22mand [1mnewusers [22m(unless the user already have subordinate user IDs) allocate [1mSUB_UID_COUNT [22munused user IDs from the range [1mSUB_UID_MIN [22mto [1mSUB_UID_MAX [22mfor
+           each new user.
+
+           The default values for [1mSUB_UID_MIN[22m, [1mSUB_UID_MAX[22m, [1mSUB_UID_COUNT [22mare respectively 100000, 600100000 and 10000.
+
+       [1mSYS_GID_MAX [22m(number), [1mSYS_GID_MIN [22m(number)
+           Range of group IDs used for the creation of system groups by [1museradd[22m, [1mgroupadd[22m, or [1mnewusers[22m.
+
+           The default value for [1mSYS_GID_MIN [22m(resp.  [1mSYS_GID_MAX[22m) is 101 (resp.  [1mGID_MIN[22m-1).
+
+       [1mSYS_UID_MAX [22m(number), [1mSYS_UID_MIN [22m(number)
+           Range of user IDs used for the creation of system users by [1museradd [22mor [1mnewusers[22m.
+
+           The default value for [1mSYS_UID_MIN [22m(resp.  [1mSYS_UID_MAX[22m) is 101 (resp.  [1mUID_MIN[22m-1).
+
+       [1mUID_MAX [22m(number), [1mUID_MIN [22m(number)
+           Range of user IDs used for the creation of regular users by [1museradd [22mor [1mnewusers[22m.
+
+           The default value for [1mUID_MIN [22m(resp.  [1mUID_MAX[22m) is 1000 (resp. 60000).
+
+       [1mUMASK [22m(number)
+           The file mode creation mask is initialized to this value. If not specified, the mask will be initialized to 022.
+
+           [1museradd [22mand [1mnewusers [22muse this mask to set the mode of the home directory they create
+
+           It is also used by [1mlogin [22mto define users' initial umask. Note that this mask can be overridden by the user's GECOS line (if [1mQUOTAS_ENAB [22mis set) or by the specification of a limit with the [4mK[0m
+           identifier in [1mlimits[22m(5).
+
+       [1mUSERGROUPS_ENAB [22m(boolean)
+           Enable setting of the umask group bits to be the same as owner bits (examples: 022 -> 002, 077 -> 007) for non-root users, if the uid is the same as gid, and username is the same as the primary
+           group name.
+
+           If set to [4myes[24m, [1muserdel [22mwill remove the user's group if it contains no more members, and [1museradd [22mwill create by default a group with the name of the user.
+
+[1mFILES[0m
+       /etc/passwd
+           User account information.
+
+       /etc/shadow
+           Secure user account information.
+
+       /etc/group
+           Group account information.
+
+       /etc/gshadow
+           Secure group account information.
+
+       /etc/default/useradd
+           Default values for account creation.
+
+       /etc/skel/
+           Directory containing default files.
+
+       /etc/subgid
+           Per user subordinate group IDs.
+
+       /etc/subuid
+           Per user subordinate user IDs.
+
+       /etc/login.defs
+           Shadow password suite configuration.
+
+[1mEXIT VALUES[0m
+       The [1museradd [22mcommand exits with the following values:
+
+       [4m0[0m
+           success
+
+       [4m1[0m
+           can't update password file
+
+       [4m2[0m
+           invalid command syntax
+
+       [4m3[0m
+           invalid argument to option
+
+       [4m4[0m
+           UID already in use (and no [1m-o[22m)
+
+       [4m6[0m
+           specified group doesn't exist
+
+       [4m9[0m
+           username already in use
+
+       [4m10[0m
+           can't update group file
+
+       [4m12[0m
+           can't create home directory
+
+       [4m14[0m
+           can't update SELinux user mapping
+
+[1mSEE ALSO[0m
+       [1mchfn[22m(1), [1mchsh[22m(1), [1mpasswd[22m(1), [1mcrypt[22m(3), [1mgroupadd[22m(8), [1mgroupdel[22m(8), [1mgroupmod[22m(8), [1mlogin.defs[22m(5), [1mnewusers[22m(8), [1msubgid[22m(5), [1msubuid[22m(5), [1muserdel[22m(8), [1musermod[22m(8).
+
+shadow-utils 4.6                                                                                  11/08/2018                                                                                       USERADD(8)
