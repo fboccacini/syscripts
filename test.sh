@@ -6,15 +6,14 @@ sudo useradd test
 echo "user test added."
 echo
 echo $PASS | sudo passwd test --stdin
-su - test <<!
-$(echo $PASS)
-echo
-echo
-whoami
-pwd
-ls -lah
-echo
-!
+
+
+# export PASS=asdasdasdasdasd
+bash test2.sh $PASS
+
+# read
+PTH=$(pwd)
+sudo -iu test bash $PTH/test2.sh $PASS
 
 sudo userdel -r test
 echo "test user removed."

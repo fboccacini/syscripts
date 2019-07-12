@@ -39,81 +39,6 @@ usage() {
   exit 1;
 }
 
-get_info() {
-  echo "Project name:"
-  read PROJECT_NAME
-
-  echo "DB production url:"
-  read DB_PRO_URL
-  echo
-
-  echo "DB development url:"
-  read DB_DEV_URL
-  echo
-
-  echo "DB test url:"
-  read DB_TEST_URL
-  echo
-
-  echo "DB production user:"
-  read DB_PRO_USER
-  echo "Password:"
-  read DB_PRO_PASS
-  echo
-
-  echo "DB development user:"
-  read DB_DEV_USER
-  echo "Password:"
-  read DB_DEV_PASS
-  echo
-
-  echo "DB test user:"
-  read DB_TEST_USER
-  echo "Password:"
-  read DB_TEST_PASS
-  echo
-}
-
-rails_configuration() {
-
-  # Get informations
-  get_info
-
-  while [ $CONFIRM != 'y' ]
-  do
-
-    echo
-    echo "Project name: $PROJECT_NAME"
-    echo "User: $NEW_USER"
-    echo "Password: $PASSWORD"
-    echo "DB production url: $DB_PRO_URL"
-    echo "DB development url: $DB_DEV_URL"
-    echo "DB production user: $DB_PRODUCTION_USER"
-    echo "DB production password: $DB_PRO_PASSWORD"
-    echo "DB development user: $DB_DEV_USER"
-    echo "DB develpment password: $DB_DEV_PASSWORD"
-    echo "DB test user: $DB_TEST_USER"
-    echo "DB test password: $DB_TEST_PASSWORD"
-    echo
-    echo "Are the informations correct? (y/n/quit)"
-
-    read CONFIRM
-
-    if [ $CONFIRM = 'quit' ]
-    then
-      exit 0
-    elif [ $CONFIRM = 'n']
-    then
-      get_info
-    else
-      echo "Confirm with 'y' or 'n'. 'quit' to exit."
-    fi
-
-  done
-
-  # TODO - params substitution in rails config files
-
-}
 
 set -e
 
@@ -191,9 +116,9 @@ while getopts ":y:assume-yes:db:git" o; do
 done
 shift $((OPTIND-1))
 
-# Set user (get to sudo already so it won't ask later)
+# Set user (get to sudo alread -sy so it won't ask later)
 sudo echo "What user should execute the webserver? We'll create one if it doesn't exist."
-read NEW_USER
+read NEW_USER > /dev/null 2>&1
 
 # Disable stop on error in case the id command fails
 set +e
@@ -217,10 +142,10 @@ else
   while [[ "$NEW_PASSWD" != "$NEW_PASSWD_RETYPED" ]]
   do
     echo "Password:"
-    read NEW_PASSWD
+    read -s NEW_PASSWD
 
     echo "Retype it:"
-    read NEW_PASSWD_RETYPED
+    read -s NEW_PASSWD_RETYPED
 
   done
 
@@ -232,18 +157,17 @@ fi
 
 
 # Perform system update
-while [[ $UPDATE != "y" ]] && [[ $UPDATE != "n" ]] && [[ $UPDATE != "Y" ]] && [[ $UPDATE != "N" ]]
+while [[ $UPDATE != "y" ]] && [[ $UPDATE != "n" ]] && [[ $UPDATE != "Y" ]] && [[ $UPDATE != "N" ]] && [[ $UPDATE != "" ]]
 do
-  echo "Proceed with system update? (y/n)"
-  read UPDATE
+  echo "Proceed with system update? (Y/n)"
+  read -s UPDATE
 done
 
-if [[ $UPDATE = "y" ]] || [[ $UPDATE = "Y" ]]
+if [[ $UPDATE = "y" ]] || [[ $UPDATE = "Y" ]] || [[ $UPDATE = "" ]]
 then
 
-  echo "Upgrading system.."
-  sudo yum -y upgrade
-  echo
+  # Update the system
+  bash ./rails_installer/update.sh
 
 else
   echo "System update skipped."
@@ -257,7 +181,7 @@ sudo yum -y --enablerepo=extras install epel-release
 echo
 
 echo "Installing dependencies.."
-sudo yum -y install openssl openssl-devel subversion curl curl-devel gcc-c++ patch readline readline-devel zlib zlib-devel libyaml-devel libffi-devel  make bzip2 autoconf automake libtool bison sqlite-devel libxml2 libxml2-devel libxslt libxslt-devel libtool
+sudo yum -y install openssl openssl-devel subversion curl curl-devel gcc-c++ patch read -sline read -sline-devel zlib zlib-devel libyaml-devel libffi-devel  make bzip2 autoconf automake libtool bison sqlite-devel libxml2 libxml2-devel libxslt libxslt-devel libtool
 echo
 
 
@@ -266,135 +190,83 @@ echo
 # Get installer path for later use
 INSTALLER_PATH=$(pwd)
 
-while [ $GIT != 'y' ] && [ $GIT != 'n' ] && [ $GIT != 'Y' ] && [ $GIT != 'N' ]
+while [[ $GIT != 'y' ]] && [[ $GIT != 'n' ]] && [[ $GIT != 'Y' ]] && [[ $GIT != 'N' ]]
 do
-  echo "Would you like to install git? (y/n)"
-  read GIT
+  echo "Would you like to install git? (Y/n)"
+  read -s GIT
 done
 
-if [ $GIT = 'y' ] || [ $GIT = 'Y' ]
+if [[ $GIT = 'y' ]] || [[ $GIT = 'Y' ]]
 then
+
   # Install git
-  echo "Installing Git.."
-  sudo yum -y install git git-core
-  echo
+  bash ./rails_installer/git-install.sh
 
 else
   echo "Git installation skipped."
   echo
 fi
 
-# Change user
-echo "Becoming $NEW_USER to install packages:"
-echo
+
 
 # Create a folder to contain all needed packages
 mkdir -p installation
 sudo chmod 777 installation
 
+echo
+
 cd installation
 INST_DIR=$(pwd)
 
-su - $NEW_USER <<!
-$(echo $PASS)
-cd $INST_DIR
-
-while [$DB != 'y' && $DB != 'n' && $DB != 'Y' && $DB != 'N']
+while [[ $DB != 'y' ]] && [[ $DB != 'n' ]] && [[ $DB != 'Y' ]] && [[ $DB != 'N' ]]
 do
   echo "Would you like to install a local db server? (y/n)"
-  read DB
+  read -s DB
 done
 
-if [ $DB = 'y' || $DB = 'Y' ]
+if [[ $DB = 'y' ]] || [[ $DB = 'Y' ]]
 then
   # DB choice
-  while [ $DB_TYPE != '1' && $DB_TYPE != '2']
+  while [[ $DB_TYPE != '1' ]] && [[ $DB_TYPE != '2' ]]
   do
     echo "Which DB server would you like to install?"
     echo "    1 - MariaDB"
     echo "    2 - Postresql"
-    read DB_TYPE
+    read -s DB_TYPE
   done
 
-  if [$DB_TYPE = '1']
-  then
-    # Install MariaDB server
-    echo "Installing DB server.."
-    curl -sS https://downloads.mariadb.com/MariaDB/mariadb_repo_setup | sudo bash
-    sudo rpm --import https://yum.mariadb.org/RPM-GPG-KEY-MariaDB
-    sudo yum -y remove MariaDB-Galera-server
-    sudo yum -y install MariaDB-server MariaDB-client MariaDB-devel MariaDB-shared
-    sudo systemctl enable mariadb
-    sudo systemctl start mariadb
-    sudo mysql_secure_installation
 
-    mysqladmin -u root -p version
+  case "${DB_TYPE}" in
 
-    echo "create database $(echo $PROJECT_NAME)_pro; create database $(echo $PROJECT_NAME)_dev; create database $(echo $PROJECT_NAME)_test; create user $(echo $DB_PRO_USER)@localhost identified by '$(echo $DB_PRO_PASS)'; create user $(echo $DB_DEV_USER)@localhost identified by '$(echo $DB_DEV_PASS)'; grant all privileges on $(echo $PROJECT_NAME)_pro.* to $(echo $DB_PRO_USER)@localhost; grant all privileges on $(echo $PROJECT_NAME)_dev.* to $(echo $DB_DEV_USER)@localhost;" | mysql -u root -p
-  else
+  2)
 
     # Install Postgresql server
-    echo "Installing Postgresql server.."
-    sudo yum -y install postgresql postgresql-devel postgresql-server postgresql-libs postgresql-contrib
+    bash $INSTALLER_PATH/rails_installer/postgres-install.sh
+    ;;
 
-    $POSTGRES_EXE=$( ls /etc/init.d/postgresql* )
+  *)
 
-    sudo /etc/init.d/$POSTGRES_EXE initdb
-    sudo /etc/init.d/$POSTGRES_EXE start
-    sudo /etc/init.d/$POSTGRES_EXE chkconfig --levels 235 $POSTGRES_EXE on
+    # Install MariaDB server
+    bash $INSTALLER_PATH/rails_installer/mariadb-install.sh
+    ;;
 
-    POSTGRES_PASS_RETYPED='ssdasd'
-    while [ $POSTGRES_PASS != $POSTGRES_PASS_RETYPED ]
-    do
-      echo "Set postgres password:"
-      read POSTGRES_PASS
-      echo "Retype it:"
-      read POSTGRES_PASS_RETYPED
-      echo
-    done
-    sudo -u postgres psql -U postgres -d postgres -c "alter user postgres with password '$POSTGRES_PASSWORD';"
-
-
-  fi
+  esac
 
 fi
 
-# Install RVM
-echo "Installing RVM.."
-sudo groupadd rvm
-sudo usermod -a -G rvm root
-sudo usermod -a -G rvm $NEW_USER
-sudo usermod -a -G wheel $NEW_USER
-
-# If it's a virtualbox vm add the user to vboxsf too
-if grep -q vboxsf /etc/group
+if [[ $NEW_USER != $(whoami)]]
 then
-     sudo usermod -a -G vboxsf $NEW_USER
-fi
 
-gpg2 --keyserver hkp://pool.sks-keyservers.net --recv-keys 409B6B1796C275462A1703113804BB82D39DC0E3 7D2BAF1CF37B13E2069D6956105BD0E739499BDB
+# Change user to install gem in it's path
+echo "Becoming $NEW_USER to install packages:"
 
-curl -L https://get.rvm.io | sudo bash -s stable --ruby
-source /etc/profile.d/rvm.sh
-
-
-
-# Get latest ruby version and install it
-RUBY_VER=$(rvm list known | grep -E "\[ruby-\]" | tail -n 1 | sed -E "s/\[ruby-\](.*?)\[.*/\1/")
-
-rvm install $RUBY_VER
-rvm --default use $RUBY_VER
+# Install RVM and Ruby
+sudo -iu $NEW_USER bash $INSTALLER_PATH/rails_installer/rvm-ruby-install.sh
 
 # Install rails, passenger and nginx
-sudo yum -y install nodejs npm
-gem install rails passenger
-rvmsudo passenger-install-nginx-module
-# wget -O nginx http://bit.ly/8XU8Vl
-cd $INSTALLER_PATH
-sudo chmod +x nginx
-sudo cp nginx /etc/init.d
-sudo /sbin/chkconfig nginx on
+sudo -iu $NEW_USER bash $INSTALLER_PATH/rails_installer/rails-passenger-nginx.sh
 
+cd $INSTALLER_PATH
 echo
 echo "Finished!"
 echo
@@ -404,7 +276,7 @@ ls $INST_DIR
 while [$DELETE != 'y' && $DELETE != 'n' && $DELETE != 'Y' && $DELETE != 'N']
 do
   echo "You won't probably need it anymore, would you like to delete it? (y/n)"
-  read DELETE
+  read -s DELETE
 done
 
 if [ $DELETE = 'y' || $DELETE = 'Y']
@@ -418,12 +290,12 @@ fi
 while [$CONFIG != 'y' && $CONFIG != 'n' && $CONFIG != 'Y' && $CONFIG != 'N']
 do
   echo "Finally, do you want configure rails as well? (y/n)"
-  read CONFIG
+  read -s CONFIG
 done
 
 if [ $CONFIG = 'y' || $CONFIG = 'Y']
 then
-  rails_configuration
+  sudo -iu $NEW_USER bash $INSTALLER_PATH/rails_installer/configure-rails.sh
   echo "Ok, all done. Have a nice developing day!"
 else
   echo "Ok, don't forget to configure it manually then. Have a nice developing day!"
