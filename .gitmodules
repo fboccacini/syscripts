@@ -1,0 +1,3 @@
+[submodule "centos_rails_installer"]
+	path = centos_rails_installer
+	url = https://github.com/fboccacini/centos_rails_installer.git
