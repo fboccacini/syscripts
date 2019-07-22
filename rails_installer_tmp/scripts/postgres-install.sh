@@ -1,14 +1,30 @@
 #!/bin/bash
+
+# Check whether postgres is already installed
+hash postgres 2>/dev/null
+
+if [ $? -eq 0 ]
+then
+  echo
+  echo "Postgres is already installed. Skipping."
+  echo
+  exit 0
+fi
+
 set -e
 
 echo "Installing Postgresql server.."
 sudo yum -y install postgresql postgresql-devel postgresql-server postgresql-libs postgresql-contrib
 
-# If in a vbox situation add group to postgres too, to avoid changedir errors
+# If in a vbox situation, add group to postgres too, to avoid changedir errors
 if grep -q vboxsf /etc/group
 then
-    echo "Adding vboxsf group to postgres."
+    # Get starting groups, double sed'ing to cover single or multiple grouops
+    GRPS=$(sudo groups postgres | sed 's/postgres : \([a-z ]* [a-z]*\) */\1/' | sed 's/postgres : \([a-z ]*\) */\1/' | sed 's/ /,/g')
+
+    echo "Adding vboxsf group to postgres to avoid change directory errors."
     sudo usermod -a -G vboxsf postgres
+    sudo groups postgres
 fi
 
 # Initial setup
@@ -47,6 +63,8 @@ echo
 # Eventually remove vboxsf group from postgresql
 if grep -q vboxsf /etc/group
 then
-    echo "Removing vboxsf group to postgres."
-    sudo usermod -g postgres postgres
+    echo "Removing vboxsf group from postgres."
+    sudo usermod -G $GRPS postgres
+    sudo groups postgres
+    echo
 fi

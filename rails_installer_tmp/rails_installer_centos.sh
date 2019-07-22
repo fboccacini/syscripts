@@ -134,7 +134,7 @@ ABS_PATH=$(cd "${0%/*}" 2>/dev/null; echo "$PWD"/"${0##*/}")
 INSTALLER_PATH=$(dirname $ABS_PATH)
 
 # Set user (get to sudo alread -sy so it won't ask later)
-sudo echo "What user should execute the webserver? We'll create one if it doesn't exist."
+sudo echo -n "What user should execute the webserver (we'll create one if it doesn't exist)?  "
 read NEW_USER
 
 # Disable stop on error in case the id command fails
@@ -160,7 +160,7 @@ else
   do
     echo -n "Password:"
     read -s NEW_PASSWD
-
+    echo
     echo -n "Retype it:"
     read -s NEW_PASSWD_RETYPED
 
@@ -169,6 +169,18 @@ else
   sudo useradd -m $NEW_USER
   echo $NEW_PASSWD | sudo passwd $NEW_USER --stdin
   echo "User $NEW_USER created."
+  echo
+fi
+
+# Add new user to the sudoers
+sudo usermod -a -G wheel $NEW_USER
+echo
+# If it's a virtualbox vm add the user to vboxsf group too
+if grep -q vboxsf /etc/group
+then
+  echo "Adding vboxsf group to $NEW_USER."
+  sudo usermod -a -G vboxsf $NEW_USER
+  sudo groups $NEW_USER
   echo
 fi
 
@@ -200,7 +212,7 @@ sudo yum -y --enablerepo=extras install epel-release
 echo
 
 echo "Installing dependencies.."
-sudo yum -y install openssl openssl-devel subversion curl curl-devel gcc-c++ patch readline readline-devel zlib zlib-devel libyaml-devel libffi-devel  make bzip2 autoconf automake libtool bison sqlite-devel libxml2 libxml2-devel libxslt libxslt-devel libtool
+sudo yum -y install openssl openssl-devel subversion curl curl-devel gcc-c++ patch readline readline-devel zlib zlib-devel libyaml-devel libffi-devel  make bzip2 autoconf automake libtool bison sqlite-devel libxml2 libxml2-devel libxslt libxslt-devel libtool gnupg mlocate
 echo
 
 
@@ -234,7 +246,7 @@ INST_DIR=$(pwd)
 
 while [[ $DB != 'y' ]] && [[ $DB != 'n' ]] && [[ $DB != 'Y' ]] && [[ $DB != 'N' ]] && [[ $DB != '' ]]
 do
-  echo -n "Would you like to install a local db server? [Y/n]  "
+  echo -n "Would you like to use or install a local db server? [Y/n]  "
   read DB
 done
 
@@ -298,7 +310,7 @@ fi
 sudo -iu $NEW_USER bash $INSTALLER_PATH/scripts/rvm-ruby-install.sh
 
 # Install rails, passenger and nginx
-sudo -iu $NEW_USER bash $INSTALLER_PATH/scripts/rails-passenger-nginx.sh
+sudo -iu $NEW_USER bash $INSTALLER_PATH/scripts/rails-passenger-nginx-install.sh
 
 cd $STARTING_PATH
 echo
@@ -309,28 +321,34 @@ ls $INST_DIR
 
 while [[ $DELETE != 'y' ]] && [[ $DELETE != 'n' ]] && [[ $DELETE != 'Y' ]] && [[ $DELETE != 'N' ]] && [[ $DELETE != '' ]]
 do
-  echo "You won't probably need it anymore, would you like to delete it? (Y/n)"
-  read -s DELETE
+  echo -n "You won't probably need it anymore, would you like to delete it? (Y/n)"
+  read DELETE
 done
 
 if [[ $DELETE = 'y' ]] || [[ $DELETE = 'Y' ]] || [[ $DELETE = '' ]]
 then
-  rm -r $INST_DIR
+  rm -rf $INST_DIR
   echo "Alright, folder deleted."
+  echo
 else
   echo "Alright, deletion skipped."
+  echo
 fi
 
 while [[ $CONFIG != 'y' ]] && [[ $CONFIG != 'n' ]] && [[ $CONFIG != 'Y' ]] && [[ $CONFIG != 'N' ]] && [[ $CONFIG != '' ]]
 do
-  echo "Finally, do you want configure rails as well? (y/n)"
-  read -s CONFIG
+  echo
+  echo -n "Finally, do you want configure rails as well? [Y/n]"
+  read CONFIG
+  echo
 done
 
 if [[ $CONFIG = 'y' ]] || [[ $CONFIG = 'Y' ]] || [[ $CONFIG = '' ]]
 then
-  sudo -iu $NEW_USER bash $INSTALLER_PATH/scripts/configure-rails.sh
+  sudo -iu $NEW_USER bash $INSTALLER_PATH/scripts/configure-rails.sh $DB $DB_TYPE
   echo "Ok, all done. Have a nice developing day!"
+  echo
 else
   echo "Ok, don't forget to configure it manually then. Have a nice developing day!"
+  echo
 fi
